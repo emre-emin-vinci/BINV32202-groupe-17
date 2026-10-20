@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workflow de visualisation d'une offre | Gesta</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #526079;
+        --line: #d9e1ee;
+        --surface: #ffffff;
+        --background: #f4f7fb;
+        --blue: #2563eb;
+        --blue-soft: #eaf1ff;
+        --green: #087f5b;
+        --green-soft: #e7f7f1;
+        --orange: #b45309;
+        --orange-soft: #fff4df;
+        --purple: #6d28d9;
+        --purple-soft: #f1eaff;
+        --shadow: 0 14px 34px rgba(23, 32, 51, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, #e4edff 0, transparent 34rem),
+          var(--background);
+        font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      a {
+        color: var(--blue);
+      }
+
+      code {
+        overflow-wrap: anywhere;
+        padding: 0.12rem 0.35rem;
+        border-radius: 0.35rem;
+        background: #eef2f8;
+        color: #26334d;
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 0.9em;
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 2rem));
+        margin: 0 auto;
+      }
+
+      header {
+        padding: 4.5rem 0 3.5rem;
+      }
+
+      .eyebrow {
+        margin: 0 0 0.65rem;
+        color: var(--blue);
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.2;
+      }
+
+      h1 {
+        max-width: 850px;
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-size: clamp(2.2rem, 5vw, 4rem);
+        letter-spacing: -0.04em;
+      }
+
+      .intro {
+        max-width: 760px;
+        margin: 1.2rem 0 0;
+        color: var(--muted);
+        font-size: 1.15rem;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 1.5rem;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.75rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .dot {
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 50%;
+      }
+
+      .dot.front {
+        background: var(--blue);
+      }
+
+      .dot.back {
+        background: var(--green);
+      }
+
+      .dot.data {
+        background: var(--orange);
+      }
+
+      section {
+        margin: 2.5rem 0;
+      }
+
+      .section-heading {
+        max-width: 760px;
+        margin-bottom: 1.25rem;
+      }
+
+      .section-heading h2 {
+        margin: 0 0 0.45rem;
+        font-size: 1.8rem;
+      }
+
+      .section-heading p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .workflow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 0.75rem;
+      }
+
+      .stage {
+        position: relative;
+        min-width: 0;
+        min-height: 215px;
+        padding: 1.25rem;
+        border: 1px solid var(--line);
+        border-top: 4px solid var(--blue);
+        border-radius: 1rem;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .stage::after {
+        position: absolute;
+        top: 50%;
+        right: -0.95rem;
+        z-index: 2;
+        color: var(--blue);
+        content: "→";
+        font-size: 1.8rem;
+        font-weight: 700;
+      }
+
+      .stage:last-child::after {
+        content: "";
+      }
+
+      .stage.database {
+        border-top-color: var(--orange);
+      }
+
+      .stage.server {
+        border-top-color: var(--green);
+      }
+
+      .stage.return {
+        border-top-color: var(--purple);
+      }
+
+      .stage-number {
+        display: inline-grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        margin-bottom: 0.8rem;
+        border-radius: 50%;
+        background: var(--blue-soft);
+        color: var(--blue);
+        font-weight: 800;
+      }
+
+      .database .stage-number {
+        background: var(--orange-soft);
+        color: var(--orange);
+      }
+
+      .server .stage-number {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+
+      .return .stage-number {
+        background: var(--purple-soft);
+        color: var(--purple);
+      }
+
+      .stage h3 {
+        margin: 0 0 0.55rem;
+        font-size: 1.1rem;
+      }
+
+      .stage p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.93rem;
+      }
+
+      .stage small {
+        display: block;
+        margin-top: 1rem;
+        overflow-wrap: anywhere;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 3rem minmax(0, 1fr);
+        gap: 1rem;
+        min-width: 0;
+        padding: 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: var(--surface);
+        box-shadow: 0 7px 20px rgba(23, 32, 51, 0.04);
+      }
+
+      .step-index {
+        display: grid;
+        width: 2.5rem;
+        height: 2.5rem;
+        place-items: center;
+        border-radius: 0.75rem;
+        background: var(--blue-soft);
+        color: var(--blue);
+        font-weight: 800;
+      }
+
+      .step h3 {
+        margin: 0 0 0.35rem;
+        overflow-wrap: anywhere;
+        font-size: 1.08rem;
+      }
+
+      .step p {
+        margin: 0;
+        overflow-wrap: anywhere;
+        color: var(--muted);
+      }
+
+      .step > div {
+        min-width: 0;
+      }
+
+      .step details {
+        margin-top: 0.7rem;
+      }
+
+      summary {
+        cursor: pointer;
+        color: var(--blue);
+        font-weight: 650;
+      }
+
+      pre {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        margin: 0.7rem 0 0;
+        padding: 1rem;
+        border-radius: 0.7rem;
+        background: #182235;
+        color: #e5edf9;
+        font: 0.84rem/1.55 "Cascadia Code", Consolas, monospace;
+      }
+
+      .columns {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .card {
+        min-width: 0;
+        padding: 1.35rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: var(--surface);
+      }
+
+      .card h3 {
+        margin: 0 0 0.65rem;
+      }
+
+      .card ul {
+        margin: 0;
+        padding-left: 1.2rem;
+        color: var(--muted);
+      }
+
+      .card li + li {
+        margin-top: 0.45rem;
+      }
+
+      .warning {
+        border-left: 4px solid var(--orange);
+        background: var(--orange-soft);
+      }
+
+      .return-flow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.8rem;
+      }
+
+      .return-card {
+        position: relative;
+        min-width: 0;
+        padding: 1.1rem;
+        border: 1px solid #d8c9f7;
+        border-radius: 1rem;
+        background: linear-gradient(145deg, #fff, var(--purple-soft));
+      }
+
+      .return-card:not(:last-child)::after {
+        position: absolute;
+        top: 50%;
+        right: -0.78rem;
+        z-index: 2;
+        color: var(--purple);
+        content: "←";
+        font-size: 1.5rem;
+        font-weight: 800;
+      }
+
+      .return-card h3 {
+        margin: 0 0 0.45rem;
+        font-size: 1rem;
+      }
+
+      .return-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.91rem;
+      }
+
+      .return-card .return-label {
+        display: inline-block;
+        margin-bottom: 0.65rem;
+        color: var(--purple);
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .callout {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 1rem;
+        align-items: start;
+        padding: 1.25rem;
+        border: 1px solid #b9d2ff;
+        border-radius: 1rem;
+        background: linear-gradient(135deg, var(--blue-soft), #fff);
+      }
+
+      .callout-icon {
+        display: grid;
+        width: 2.4rem;
+        height: 2.4rem;
+        place-items: center;
+        border-radius: 0.75rem;
+        background: var(--blue);
+        color: #fff;
+        font-weight: 900;
+      }
+
+      .callout h3 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+      }
+
+      .callout p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      footer {
+        margin-top: 4rem;
+        padding: 2rem 0 3rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 900px) {
+        .workflow {
+          grid-template-columns: 1fr;
+        }
+
+        .stage {
+          min-height: auto;
+        }
+
+        .stage::after {
+          top: auto;
+          right: auto;
+          bottom: -1.3rem;
+          left: 50%;
+          content: "↓";
+          transform: translateX(-50%);
+        }
+
+        .stage:last-child::after {
+          content: "";
+        }
+
+        .return-flow {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .return-card:nth-child(2)::after {
+          content: "";
+        }
+
+        .return-card:nth-child(3)::after {
+          top: auto;
+          right: auto;
+          bottom: -1.2rem;
+          left: 50%;
+          content: "↓";
+          transform: translateX(-50%);
+        }
+      }
+
+      @media (max-width: 650px) {
+        header {
+          padding-top: 3rem;
+        }
+
+        .columns {
+          grid-template-columns: 1fr;
+        }
+
+        .step {
+          grid-template-columns: 1fr;
+        }
+
+        .return-flow {
+          grid-template-columns: 1fr;
+        }
+
+        .return-card:not(:last-child)::after {
+          top: auto;
+          right: auto;
+          bottom: -1.25rem;
+          left: 50%;
+          content: "↓";
+          transform: translateX(-50%);
+        }
+
+        .return-card:nth-child(2)::after,
+        .return-card:nth-child(3)::after {
+          content: "↓";
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <p class="eyebrow">Gesta · documentation technique</p>
+        <h1>Visualiser une offre, du composant React jusqu'à SQLite… puis retour</h1>
+        <p class="intro">
+          Cette page décrit le parcours complet d'une requête
+          <code>GET /offers</code>. L'utilisateur ouvre la page des offres, le frontend
+          appelle l'API, le backend vérifie les droits et interroge la base, puis la
+          réponse remonte jusqu'au tableau React.
+        </p>
+        <div class="legend" aria-label="Légende des couches">
+          <span><i class="dot front"></i>Frontend React</span>
+          <span><i class="dot back"></i>Backend Express</span>
+          <span><i class="dot data"></i>Base SQLite</span>
+        </div>
+      </header>
+
+      <main>
+        <section aria-labelledby="overview-title">
+          <div class="section-heading">
+            <h2 id="overview-title">Le trajet en un coup d'œil</h2>
+            <p>La flèche bleue représente la demande. Le retour suit le même chemin en sens inverse.</p>
+          </div>
+          <div class="workflow">
+            <article class="stage">
+              <span class="stage-number">1</span>
+              <h3>OffersPage</h3>
+              <p>La page React est rendue et déclenche le hook <code>useOffers</code>.</p>
+              <small><code>frontend/src/pages/OffersPage.tsx</code></small>
+            </article>
+            <article class="stage">
+              <span class="stage-number">2</span>
+              <h3>Service HTTP</h3>
+              <p>Le hook appelle <code>getOffers</code> avec le token de session.</p>
+              <small><code>frontend/src/services/offers.service.ts</code></small>
+            </article>
+            <article class="stage server">
+              <span class="stage-number">3</span>
+              <h3>Route Express</h3>
+              <p>Vite transmet <code>/api/offers</code> à la route backend <code>/offers</code>.</p>
+              <small><code>backend/src/controllers/offers.controller.ts</code></small>
+            </article>
+            <article class="stage server">
+              <span class="stage-number">4</span>
+              <h3>Service métier</h3>
+              <p>Le profil détermine le filtre de visibilité applicable.</p>
+              <small><code>backend/src/services/offers.service.ts</code></small>
+            </article>
+            <article class="stage database">
+              <span class="stage-number">5</span>
+              <h3>SQLite</h3>
+              <p>Le repository exécute la requête SQL et récupère les lignes d'offres.</p>
+              <small><code>backend/src/repositories/offers.repository.ts</code></small>
+            </article>
+          </div>
+          <div class="callout" style="margin-top: 1.25rem">
+            <span class="callout-icon" aria-hidden="true">↔</span>
+            <div>
+              <h3>Un aller-retour, pas une seule direction</h3>
+              <p>
+                La requête descend du navigateur vers SQLite pour trouver les données. La réponse
+                remonte ensuite sous forme de JSON : le controller la renvoie, le service frontend
+                la valide, le hook met à jour son état et React reconstruit le tableau visible.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="details-title">
+          <div class="section-heading">
+            <h2 id="details-title">Le workflow détaillé</h2>
+            <p>Chaque étape a une responsabilité précise afin de séparer l'interface, le métier et l'accès aux données.</p>
+          </div>
+          <div class="timeline">
+            <article class="step">
+              <span class="step-index">1</span>
+              <div>
+                <h3>L'utilisateur arrive sur <code>/offres</code></h3>
+                <p>
+                  <code>App.tsx</code> vérifie la session via <code>useAuth</code>. Si l'utilisateur
+                  a le droit de consulter les offres, React rend <code>OffersPage</code> avec le
+                  token et le callback de déconnexion.
+                </p>
+                <details>
+                  <summary>Voir le lien entre les composants</summary>
+                  <pre><code>App
+  └─ OffersPage
+       └─ useOffers(token, onUnauthorized)
+            └─ getOffers(token)</code></pre>
+                </details>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">2</span>
+              <div>
+                <h3>Le hook démarre le chargement</h3>
+                <p>
+                  <code>useOffers</code> initialise l'état <code>isLoading</code>, crée un
+                  <code>AbortController</code>, puis appelle le service HTTP dans un
+                  <code>useEffect</code>. La page peut donc afficher un état de chargement.
+                </p>
+                <pre><code>const { offers, isLoading, error } =
+  useOffers(token, onUnauthorized);</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">3</span>
+              <div>
+                <h3>Le frontend envoie la requête à l'API</h3>
+                <p>
+                  Le service appelle <code>/api/offers</code> avec le token dans l'en-tête
+                  <code>Authorization</code>. Vite utilise son proxy pour retirer
+                  <code>/api</code> et transmettre la requête au backend sur le port 3000.
+                </p>
+                <pre><code>GET http://localhost:5173/api/offers
+Authorization: &lt;token&gt;
+
+→ GET http://localhost:3000/offers</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">4</span>
+              <div>
+                <h3>Le backend authentifie la requête</h3>
+                <p>
+                  Le middleware <code>authenticate</code> vérifie le token, recharge l'utilisateur
+                  en base et place son identité, ses rôles et ses entreprises dans la requête.
+                  Un token absent ou invalide produit une réponse <code>401</code>.
+                </p>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">5</span>
+              <div>
+                <h3>La route vérifie l'autorisation</h3>
+                <p>
+                  Le controller utilise <code>authorize(canListOffers)</code>. Le backend ne se
+                  fie pas à l'interface : il décide réellement si l'utilisateur peut consulter
+                  les offres. Sinon, il renvoie <code>403 FORBIDDEN</code>.
+                </p>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">6</span>
+              <div>
+                <h3>Le service applique la visibilité métier</h3>
+                <p>
+                  Le service construit un filtre selon le profil : toutes les offres pour un
+                  administrateur, les offres <code>PUBLISHED</code> pour un étudiant et les
+                  offres déposées par le contact pour un déposant.
+                </p>
+                <pre><code>admin   → {}
+student → { status: "PUBLISHED" }
+contact → { depositorContactId: user.id }</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">7</span>
+              <div>
+                <h3>Le repository interroge SQLite</h3>
+                <p>
+                  Le repository transforme le filtre en paramètres SQL. Il joint les tables des
+                  entreprises, années académiques et périodes pour préparer les données nécessaires
+                  à l'affichage.
+                </p>
+                <pre><code>SELECT o.id, o.title, o.description, o.status,
+       c.short_name AS company_short_name,
+       ay.label AS academic_year_label,
+       p.code AS period_code
+FROM offers o
+JOIN companies c ON c.id = o.company_id
+JOIN academic_years ay ON ay.id = o.academic_year_id
+JOIN periods p ON p.id = o.period_id
+WHERE ...;</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">8</span>
+              <div>
+                <h3>Les données remontent dans le backend</h3>
+                <p>
+                  Le repository renvoie des lignes SQL (DBO). Le mapper
+                  <code>toOffer</code> les convertit en objets métier, puis
+                  <code>toOfferDto</code> prépare le format public de l'API. Le controller
+                  renvoie la liste avec <code>res.json(...)</code>.
+                </p>
+                <pre><code>SQLite rows
+  → toOffer(row)
+  → toOfferDto(offer)
+  → HTTP 200 + JSON</code></pre>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">9</span>
+              <div>
+                <h3>Le service frontend valide la réponse</h3>
+                <p>
+                  <code>readJson</code> vérifie le statut HTTP et le type du JSON avec
+                  <code>isOfferList</code>. Une réponse mal formée devient une erreur explicite
+                  au lieu d'être affichée comme une liste valide.
+                </p>
+              </div>
+            </article>
+
+            <article class="step">
+              <span class="step-index">10</span>
+              <div>
+                <h3>React met à jour l'interface</h3>
+                <p>
+                  Le hook stocke les offres dans son state. <code>OffersPage</code> choisit alors
+                  entre chargement, erreur, liste vide ou <code>OfferTable</code>. React rerend le
+                  tableau avec les données reçues.
+                </p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section aria-labelledby="return-title">
+          <div class="section-heading">
+            <h2 id="return-title">Le retour des données vers l'écran</h2>
+            <p>
+              Après l'exécution SQL, chaque couche restitue un format adapté à la couche suivante.
+              Cette séparation évite de mélanger SQL, HTTP et affichage.
+            </p>
+          </div>
+          <div class="return-flow">
+            <article class="return-card">
+              <span class="return-label">Base de données</span>
+              <h3>Lignes SQLite</h3>
+              <p>
+                SQLite fournit des colonnes issues de <code>offers</code> et de ses jointures,
+                avec des noms adaptés au stockage.
+              </p>
+            </article>
+            <article class="return-card">
+              <span class="return-label">Backend</span>
+              <h3>Objet métier puis DTO</h3>
+              <p>
+                Les mappers convertissent les données brutes en objet <code>Offer</code>, puis en
+                format public stable pour l'API.
+              </p>
+            </article>
+            <article class="return-card">
+              <span class="return-label">HTTP</span>
+              <h3>Réponse <code>200</code></h3>
+              <p>
+                Express sérialise la liste avec <code>res.json</code>. Le navigateur reçoit un
+                tableau JSON ou une erreur structurée.
+              </p>
+            </article>
+            <article class="return-card">
+              <span class="return-label">React</span>
+              <h3>État puis affichage</h3>
+              <p>
+                Le hook enregistre les offres et <code>OfferTable</code> affiche chaque titre,
+                entreprise, période et statut.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section aria-labelledby="payload-title">
+          <div class="section-heading">
+            <h2 id="payload-title">Exemple de données à chaque frontière</h2>
+            <p>
+              Les noms peuvent changer entre la base et l'interface : les mappers et les guards
+              rendent ces transformations explicites.
+            </p>
+          </div>
+          <div class="columns">
+            <article class="card">
+              <h3>Réponse JSON réelle de l'API</h3>
+              <pre><code>[
+  {
+    "id": 12,
+    "title": "Développeur web",
+    "companyShortName": "Gesta",
+    "academicYear": "2026-2027",
+    "period": "P2",
+    "status": "PUBLISHED"
+  }
+]</code></pre>
+            </article>
+            <article class="card">
+              <h3>Décision d'affichage</h3>
+              <ul>
+                <li><strong>Chargement :</strong> <code>LoadingState</code> informe l'utilisateur.</li>
+                <li><strong>Aucune offre :</strong> <code>EmptyState</code> explique que la liste est vide.</li>
+                <li><strong>Erreur :</strong> <code>ErrorState</code> affiche un message lisible.</li>
+                <li><strong>Données valides :</strong> <code>OfferTable</code> rend le tableau.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section aria-labelledby="responsibilities-title">
+          <div class="section-heading">
+            <h2 id="responsibilities-title">Responsabilités et erreurs</h2>
+          </div>
+          <div class="columns">
+            <article class="card">
+              <h3>Ce que fait chaque couche</h3>
+              <ul>
+                <li><strong>Page / composant :</strong> affiche l'interface et les états visuels.</li>
+                <li><strong>Hook :</strong> orchestre le chargement, l'annulation et l'état React.</li>
+                <li><strong>Service frontend :</strong> réalise l'appel HTTP et valide le JSON.</li>
+                <li><strong>Controller :</strong> traduit HTTP vers le service métier.</li>
+                <li><strong>Service backend :</strong> applique les droits et règles de visibilité.</li>
+                <li><strong>Repository :</strong> exécute le SQL sans décider des permissions.</li>
+                <li><strong>Mapper :</strong> convertit les formats de données.</li>
+              </ul>
+            </article>
+            <article class="card warning">
+              <h3>Cas d'erreur principaux</h3>
+              <ul>
+                <li><code>401</code> : session absente ou invalide ; le frontend déconnecte l'utilisateur.</li>
+                <li><code>403</code> : utilisateur authentifié mais sans droit d'accès.</li>
+                <li><code>404</code> : route inconnue ; le middleware de routes introuvables répond.</li>
+                <li><code>500</code> : erreur inattendue ; <code>errorHandler</code> centralise la réponse.</li>
+                <li>Réponse JSON invalide : le guard frontend affiche une erreur de chargement.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        Sources principales :
+        <a href="../frontend/src/App.tsx">frontend/src/App.tsx</a>,
+        <a href="../frontend/src/pages/OffersPage.tsx">OffersPage.tsx</a>,
+        <a href="../frontend/src/hooks/useOffers.ts">useOffers.ts</a>,
+        <a href="../backend/src/controllers/offers.controller.ts">offers.controller.ts</a>,
+        <a href="../backend/src/services/offers.service.ts">offers.service.ts</a> et
+        <a href="../backend/src/repositories/offers.repository.ts">offers.repository.ts</a>.
+      </footer>
+    </div>
+  </body>
+</html>
