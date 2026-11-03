@@ -171,3 +171,42 @@ récente à la plus ancienne, puis de la plus récente à la plus ancienne.
 - `401` `UNAUTHENTICATED` : session absente ou invalide.
 - `403` `FORBIDDEN` : contact seulement promoteur ou signataire.
 - `400` `INVALID_QUERY` : paramètre `period` répété ou avec une valeur inconnue.
+
+## GET /applications
+
+Retourne les candidatures de l'étudiant connecté pour l'année académique courante.
+Les administrateurs et contacts n'ont pas accès à cette route.
+
+- `200` : tableau contenant `id`, `offerId`, `offerTitle`, `companyShortName`,
+  `academicYear`, `period`, `message`, `status` et `appliedAt`.
+- `401` : session absente ou invalide.
+- `403` `FORBIDDEN` : utilisateur qui n'est pas étudiant.
+
+`status` vaut `IN_PROGRESS`, `SELECTED`, `REJECTED` ou `WITHDRAWN`.
+
+## POST /applications
+
+Crée une candidature pour l'étudiant connecté.
+
+### Requête
+
+```json
+{ "offerId": 1, "message": "Message facultatif" }
+```
+
+`message` est facultatif, non vide s'il est fourni, et limité à 1 000 caractères.
+L'offre doit être `PUBLISHED` et appartenir à l'année courante. Une seule candidature
+`IN_PROGRESS` est autorisée pour un étudiant et une offre.
+
+- `201` : candidature créée.
+- `400` `INVALID_BODY` ou `OFFER_NOT_AVAILABLE`.
+- `409` `APPLICATION_EXISTS` : candidature déjà en cours.
+
+## DELETE /applications/:id
+
+Retire la candidature de l'étudiant connecté. Seule une candidature `IN_PROGRESS` peut
+être retirée ; son historique est conservé avec le statut `WITHDRAWN`.
+
+- `204` : candidature retirée.
+- `404` : candidature inexistante ou appartenant à un autre étudiant.
+- `409` `APPLICATION_ALREADY_PROCESSED` : candidature déjà traitée.
