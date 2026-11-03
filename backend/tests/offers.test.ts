@@ -13,6 +13,9 @@ beforeEach(() => {
 const listOffersAs = (kind: UserKind, id: number) =>
   request(app).get("/offers").set("Authorization", tokenFor(kind, id));
 
+const listOffersAsWithPeriod = (kind: UserKind, id: number, period: string) =>
+  request(app).get(`/offers?period=${period}`).set("Authorization", tokenFor(kind, id));
+
 const offerIds = (body: { id: number }[]): number[] => body.map((offer) => offer.id);
 
 describe("GET /offers : accès", () => {
@@ -95,5 +98,42 @@ describe("GET /offers : visibilité selon le profil", () => {
     expect(Object.keys(response.body[0]).sort()).toEqual(
       ["academicYear", "companyShortName", "id", "period", "status", "title"],
     );
+  });
+});
+
+describe("GET /offers : filtre par période", () => {
+  it("filtre les offres d'un administrateur par période", async () => {
+    const response = await listOffersAsWithPeriod("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ, "P1");
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.PDF_REPORTS]);
+    expect(response.body.every((offer: { period: string }) => offer.period === "P1")).toBe(true);
+  });
+
+  it("conserve les règles de visibilité en appliquant le filtre", async () => {
+    const response = await listOffersAsWithPeriod("STUDENT", STUDENT.LUCAS_DUPONT, "P1");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+
+  it.each(["P3", "p1", ""])("refuse une période invalide (%s)", async (period) => {
+    const response = await listOffersAsWithPeriod(
+      "ADMIN",
+      ADMINISTRATOR.ANNE_LECLERCQ,
+      period,
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("INVALID_QUERY");
+  });
+
+  it("refuse un paramètre period répété", async () => {
+    const response = await request(app)
+      .get("/offers?period=P1&period=P2")
+      .set("Authorization", tokenFor("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ));
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("INVALID_QUERY");
   });
 });
