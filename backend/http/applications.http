@@ -1,0 +1,62 @@
+@baseUrl = http://localhost:3000
+@studentToken = remplacer-par-un-token-etudiant
+@contactToken = remplacer-par-un-token-contact
+
+### Mes candidatures
+GET {{baseUrl}}/applications
+Authorization: {{studentToken}}
+
+### Candidater à une offre publiée
+POST {{baseUrl}}/applications
+Authorization: {{studentToken}}
+Content-Type: application/json
+
+{
+  "offerId": 1,
+  "message": "Le sujet m'intéresse."
+}
+
+### Candidater sans message
+POST {{baseUrl}}/applications
+Authorization: {{studentToken}}
+Content-Type: application/json
+
+{
+  "offerId": 7
+}
+
+### Refus serveur : un contact ne peut pas candidater
+POST {{baseUrl}}/applications
+Authorization: {{contactToken}}
+Content-Type: application/json
+
+{
+  "offerId": 1,
+  "message": "Cette requête doit répondre 403 FORBIDDEN."
+}
+
+### Refus serveur : une offre non publiée n'accepte pas de candidature
+POST {{baseUrl}}/applications
+Authorization: {{studentToken}}
+Content-Type: application/json
+
+{
+  "offerId": 4
+}
+
+### Recharger mes candidatures et vérifier le statut
+GET {{baseUrl}}/applications
+Authorization: {{studentToken}}
+
+### Retirer une candidature en cours
+DELETE {{baseUrl}}/applications/1
+Authorization: {{studentToken}}
+
+### Recharger après retrait : le statut doit être WITHDRAWN
+GET {{baseUrl}}/applications
+Authorization: {{studentToken}}
+
+### Retrait impossible d'une candidature déjà traitée
+# Remplacer 3 par l'identifiant d'une candidature SELECTED ou REJECTED.
+DELETE {{baseUrl}}/applications/3
+Authorization: {{studentToken}}

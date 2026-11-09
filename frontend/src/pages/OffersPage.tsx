@@ -39,7 +39,12 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
         <p className="result-count">
           {offers.length} offre{offers.length > 1 ? "s" : ""}
         </p>
-        <OfferTable offers={offers} />
+        <OfferTable
+          offers={offers}
+          user={user}
+          token={token}
+          onUnauthorized={onUnauthorized}
+        />
       </>
     );
   };

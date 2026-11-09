@@ -14,7 +14,7 @@ describe("runMigrations", () => {
   it("crée toutes les tables sur une base vierge", () => {
     const db = openDatabase(IN_MEMORY);
 
-    expect(runMigrations(db)).toEqual(["001_initial.sql"]);
+    expect(runMigrations(db)).toEqual(["001_initial.sql", "002_application_active_unique.sql"]);
     expect(listTables(db)).toEqual([...SEEDED_TABLES, "schema_migrations"].sort());
   });
 

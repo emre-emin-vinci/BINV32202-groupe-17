@@ -8,12 +8,14 @@ export interface OfferFilter {
   depositorContactId?: number;
   /** Limite aux offres de cette période. */
   period?: PeriodCode;
+  currentYear?: boolean;
 }
 
 interface FindAllParams {
   status: OfferStatus | null;
   depositorContactId: number | null;
   period: PeriodCode | null;
+  currentYear: number;
 }
 
 export const createOffersRepository = (db: Db) => {
@@ -30,17 +32,32 @@ export const createOffersRepository = (db: Db) => {
     WHERE (@status IS NULL OR o.status = @status)
       AND (@depositorContactId IS NULL OR o.depositor_contact_id = @depositorContactId)
       AND (@period IS NULL OR p.code = @period)
+      AND (@currentYear = 0 OR ay.is_current = 1)
     ORDER BY ay.start_date DESC, o.created_at DESC
+  `);
+  const findPublishedCurrentById = db.prepare<{ id: number }, OfferDbo | undefined>(`
+    SELECT o.id, o.title, o.description, o.status,
+           o.company_id, c.short_name AS company_short_name,
+           o.depositor_contact_id,
+           ay.label AS academic_year_label, p.code AS period_code,
+           o.created_at, o.updated_at
+    FROM offers o
+    JOIN companies c ON c.id = o.company_id
+    JOIN academic_years ay ON ay.id = o.academic_year_id AND ay.is_current = 1
+    JOIN periods p ON p.id = o.period_id
+    WHERE o.id = @id AND o.status = 'PUBLISHED'
   `);
 
   return {
     /** Offres correspondant au filtre, de la plus récente année à la plus ancienne. */
-    findAll: ({ status, depositorContactId, period }: OfferFilter): OfferDbo[] =>
+    findAll: ({ status, depositorContactId, period, currentYear }: OfferFilter): OfferDbo[] =>
       findAll.all({
         status: status ?? null,
         depositorContactId: depositorContactId ?? null,
         period: period ?? null,
+        currentYear: currentYear ? 1 : 0,
       }),
+    findPublishedCurrentById: (id: number): OfferDbo | undefined => findPublishedCurrentById.get({ id }),
   };
 };
 
