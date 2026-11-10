@@ -9,6 +9,8 @@ import HomePage from "./pages/HomePage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
 import OffersPage from "./pages/OffersPage.tsx";
+import GuidesPage from "./pages/GuidesPage.tsx";
+import GuideDetailPage from "./pages/GuideDetailPage.tsx";
 import { canListOffers } from "./utils/permissions.ts";
 
 const App = () => {
@@ -40,6 +42,8 @@ const App = () => {
           path="/entreprises"
           element={<CompaniesPage token={auth.token} onUnauthorized={auth.logout} />}
         />
+        <Route path="/guides" element={<GuidesPage />} />
+        <Route path="/guides/:slug" element={<GuideDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     );
