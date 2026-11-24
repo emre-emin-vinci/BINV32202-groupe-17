@@ -26,6 +26,28 @@ describe("applications", () => {
     });
   });
 
+  it("isole les candidatures entre deux étudiants", async () => {
+    const lucasResponse = await request(app)
+      .get("/applications")
+      .set("Authorization", studentToken(STUDENT.LUCAS_DUPONT));
+    const inesResponse = await request(app)
+      .get("/applications")
+      .set("Authorization", studentToken(STUDENT.INES_HADDAD));
+
+    expect(lucasResponse.body).toEqual([
+      expect.objectContaining({ id: APPLICATION.LUCAS_FLEET_APP }),
+    ]);
+    expect(inesResponse.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: APPLICATION.INES_FLEET_APP }),
+        expect.objectContaining({ id: APPLICATION.INES_BILLING_API }),
+      ]),
+    );
+    expect(inesResponse.body).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: APPLICATION.LUCAS_FLEET_APP })]),
+    );
+  });
+
   it("crée une candidature avec un message", async () => {
     const response = await request(app)
       .post("/applications")
@@ -83,6 +105,55 @@ describe("applications", () => {
       .set("Authorization", studentToken(STUDENT.MATEUSZ_KOWALSKI))
       .send({ offerId: OFFER.INTERNAL_CHATBOT, message: " ".repeat(1001) });
     expect(invalidMessage.status).toBe(400);
+
+    const blankMessage = await request(app)
+      .post("/applications")
+      .set("Authorization", studentToken(STUDENT.MATEUSZ_KOWALSKI))
+      .send({ offerId: OFFER.INTERNAL_CHATBOT, message: "   " });
+    expect(blankMessage.status).toBe(400);
+    expect(blankMessage.body.error.code).toBe("INVALID_BODY");
+  });
+
+  it("refuse une candidature active en doublon par l'API", async () => {
+    const first = await request(app)
+      .post("/applications")
+      .set("Authorization", studentToken(STUDENT.MATEUSZ_KOWALSKI))
+      .send({ offerId: OFFER.INTERNAL_CHATBOT });
+    expect(first.status).toBe(201);
+
+    const duplicate = await request(app)
+      .post("/applications")
+      .set("Authorization", studentToken(STUDENT.MATEUSZ_KOWALSKI))
+      .send({ offerId: OFFER.INTERNAL_CHATBOT });
+
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error.code).toBe("APPLICATION_EXISTS");
+  });
+
+  it("retourne les statuts retenue et non retenue à leurs étudiants", async () => {
+    const selected = await request(app)
+      .get("/applications")
+      .set("Authorization", studentToken(STUDENT.MATEUSZ_KOWALSKI));
+    const rejected = await request(app)
+      .get("/applications")
+      .set("Authorization", studentToken(STUDENT.LEA_MERTENS));
+
+    expect(selected.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: APPLICATION.MATEUSZ_CLOUD_MIGRATION,
+          status: "SELECTED",
+        }),
+      ]),
+    );
+    expect(rejected.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: APPLICATION.LEA_CLOUD_MIGRATION,
+          status: "REJECTED",
+        }),
+      ]),
+    );
   });
 
   it("refuse côté serveur la candidature d'un utilisateur qui n'est pas étudiant", async () => {
@@ -121,6 +192,18 @@ describe("applications", () => {
       .delete(`/applications/${APPLICATION.MATEUSZ_CLOUD_MIGRATION}`)
       .set("Authorization", studentToken(STUDENT.MATEUSZ_KOWALSKI));
     expect(processed.status).toBe(409);
+  });
+
+  it("refuse le retrait de la candidature d'un autre étudiant", async () => {
+    const response = await request(app)
+      .delete(`/applications/${APPLICATION.INES_FLEET_APP}`)
+      .set("Authorization", studentToken(STUDENT.LUCAS_DUPONT));
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toEqual({
+      code: "NOT_FOUND",
+      message: "Candidature introuvable",
+    });
   });
 
   it("refuse les actions d'un administrateur", async () => {

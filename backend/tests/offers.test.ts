@@ -16,6 +16,9 @@ const listOffersAs = (kind: UserKind, id: number) =>
 const listOffersAsWithPeriod = (kind: UserKind, id: number, period: string) =>
   request(app).get(`/offers?period=${period}`).set("Authorization", tokenFor(kind, id));
 
+const searchOffersAs = (kind: UserKind, id: number, q: string) =>
+  request(app).get("/offers").query({ q }).set("Authorization", tokenFor(kind, id));
+
 const offerIds = (body: { id: number }[]): number[] => body.map((offer) => offer.id);
 
 describe("GET /offers : accès", () => {
@@ -135,5 +138,48 @@ describe("GET /offers : filtre par période", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_QUERY");
+  });
+});
+
+describe("GET /offers : recherche par titre", () => {
+  it("cherche une expression dans le titre sans tenir compte de la casse", async () => {
+    const response = await searchOffersAs("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ, "PORTAIL CLIENT");
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.CLIENT_PORTAL]);
+  });
+
+  it("ignore les espaces autour de la recherche et combine avec la période", async () => {
+    const response = await request(app)
+      .get("/offers")
+      .query({ q: "  qualité des données  ", period: "OTHER" })
+      .set("Authorization", tokenFor("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ));
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.DATA_QUALITY]);
+  });
+
+  it("retourne une liste vide sans correspondance", async () => {
+    const response = await searchOffersAs("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ, "inexistant");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+
+  it("conserve la visibilité des offres publiées pour un étudiant", async () => {
+    const response = await searchOffersAs("STUDENT", STUDENT.LUCAS_DUPONT, "API");
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.BILLING_API]);
+    expect(response.body.every((offer: { status: string }) => offer.status === "PUBLISHED")).toBe(
+      true,
+    );
+  });
+
+  it("traite une recherche vide comme une absence de filtre", async () => {
+    const response = await searchOffersAs("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ, "   ");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(10);
   });
 });
